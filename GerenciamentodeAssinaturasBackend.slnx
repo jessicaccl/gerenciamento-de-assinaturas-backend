@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="GerenciamentodeAssinaturas.Tests/GerenciamentodeAssinaturas.Tests.csproj" />
+  <Project Path="GerenciamentodeAssinaturasBackend/GerenciamentodeAssinaturasBackend.csproj" />
+</Solution>

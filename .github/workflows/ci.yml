@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+
+jobs:
+  build-e-testes:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: assina_mais
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d assina_mais"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+      rabbitmq:
+        image: rabbitmq:3-alpine
+        ports:
+          - 5672:5672
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+
+      - name: Criar estrutura do banco
+        run: psql -h localhost -U postgres -d assina_mais -f db/init.sql
+        env:
+          PGPASSWORD: postgres
+
+      - name: Build
+        run: dotnet build GerenciamentodeAssinaturasBackend.slnx -c Release
+
+      - name: Testes
+        run: dotnet test GerenciamentodeAssinaturasBackend.slnx -c Release --no-build

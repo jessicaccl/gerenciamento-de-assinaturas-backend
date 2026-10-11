@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f3ff;
+            padding: 20px;
+            color: #1f1f2e;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 16px rgba(76, 29, 149, 0.12);
+        }
+
+        .header {
+            text-align: center;
+            background: linear-gradient(135deg, #6d28d9 0%, #10b981 100%);
+            color: white;
+            padding: 28px 20px;
+        }
+
+        .header .marca {
+            font-size: 28px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            margin: 0;
+        }
+
+        .content {
+            padding: 30px;
+            font-size: 16px;
+            line-height: 1.6;
+        }
+
+        .btn {
+            display: inline-block;
+            background-color: #6d28d9;
+            color: white !important;
+            padding: 12px 25px;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: bold;
+            margin-top: 20px;
+        }
+
+        .footer {
+            padding: 20px 30px 30px;
+            font-size: 12px;
+            color: #888;
+            text-align: center;
+            border-top: 1px solid #eee;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <p class="marca">Assina+</p>
+            <p>Gestão de planos e assinaturas</p>
+        </div>
+
+        <div class="content">
+            <p>Olá, <strong>{{NOME}}</strong>!</p>
+
+            <p>Seu cadastro foi realizado com <strong>sucesso</strong>.</p>
+            <p>Sua conta já está ativa. É só entrar e começar a usar!</p>
+
+            <div style="text-align: center;">
+                <a href="{{URL_SISTEMA}}" class="btn">ACESSAR O ASSINA+</a>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>Este é um e-mail automático, não é necessário respondê-lo.</p>
+            <p>Assina+ &middot; projeto de portfólio</p>
+        </div>
+    </div>
+</body>
+</html>

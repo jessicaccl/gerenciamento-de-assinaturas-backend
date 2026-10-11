@@ -1,0 +1,29 @@
+# Blueprint do Render (plano gratuito): New > Blueprint > selecione este repositório.
+# Os valores marcados com sync: false são pedidos no painel durante a criação.
+services:
+  - type: web
+    name: assina-mais-api
+    runtime: docker
+    plan: free
+    healthCheckPath: /swagger/index.html
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: PORT
+        value: "8080"
+      - key: Jwt__Key
+        generateValue: true
+      # URL do banco (ex.: Neon). Aceita o formato postgresql://usuario:senha@host/banco
+      - key: ConnectionStrings__DefaultConnection
+        sync: false
+      # Endereço do frontend publicado (ex.: https://assina-mais.vercel.app)
+      - key: Cors__Origens__0
+        sync: false
+      - key: App__UrlFrontend
+        sync: false
+      # Mensageria opcional: para ativar, crie uma instância gratuita no CloudAMQP,
+      # mude para "true" e preencha RabbitMQ__Url com a URL amqps:// fornecida
+      - key: RabbitMQ__Habilitado
+        value: "false"
+      - key: RabbitMQ__Url
+        sync: false

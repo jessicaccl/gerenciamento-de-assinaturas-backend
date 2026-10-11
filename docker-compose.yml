@@ -1,0 +1,55 @@
+# Sobe o ambiente completo do backend: PostgreSQL + RabbitMQ + API
+#   docker compose up -d --build
+# API e Swagger: http://localhost:5029/swagger | Painel do RabbitMQ: http://localhost:15672 (guest/guest)
+
+name: assina-mais
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: assina_mais
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "${DB_PORT:-5432}:5432"   # se já tiver um Postgres local na 5432, use: DB_PORT=5434 docker compose up -d
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d assina_mais"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_port_connectivity"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+
+  api:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__DefaultConnection: "Host=db;Port=5432;Database=assina_mais;Username=postgres;Password=postgres;"
+      RabbitMQ__Host: rabbitmq
+      # Para enviar e-mails de verdade, preencha com uma senha de app do Gmail (opcional)
+      Email__Remetente: ""
+      Email__Senha: ""
+    ports:
+      - "5029:8080"
+
+volumes:
+  db-data:

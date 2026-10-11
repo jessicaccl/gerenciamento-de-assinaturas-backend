@@ -1,0 +1,50 @@
+# Requisições de exemplo (VS Code REST Client / Visual Studio)
+# 1. Rode o login e copie o token retornado para a variável @token
+
+@HostAddress = http://localhost:5029
+@token = cole_o_token_aqui
+
+### Login com a conta demo (Admin)
+POST {{HostAddress}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "demo@assinamais.dev",
+  "senha": "demo123"
+}
+
+### Dados do usuário logado
+GET {{HostAddress}}/api/auth/me
+Authorization: Bearer {{token}}
+
+### Listar planos
+GET {{HostAddress}}/api/planos
+Authorization: Bearer {{token}}
+
+### Criar plano (Admin)
+POST {{HostAddress}}/api/planos
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "nome": "Plano Premium",
+  "valor": 99.90,
+  "descricao": "Plano criado pelo arquivo .http",
+  "ativo": true
+}
+
+### Criar assinatura
+POST {{HostAddress}}/api/assinaturas
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "planoId": 1,
+  "clienteNome": "Cliente de Exemplo",
+  "tipoRecorrencia": "Mensal",
+  "formaPagamento": "Pix"
+}
+
+### Listar assinaturas
+GET {{HostAddress}}/api/assinaturas
+Authorization: Bearer {{token}}
