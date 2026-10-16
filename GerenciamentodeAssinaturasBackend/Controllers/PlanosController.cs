@@ -1,5 +1,6 @@
 ﻿using GerenciamentoAssinaturas.Domain.Interfaces;
 using GerenciamentodeAssinaturasBackend.Application.DTOs;
+using GerenciamentodeAssinaturasBackend.Domain.Services;
 using GerenciamentodeAssinaturasBackend.Application.Interfaces;
 using GerenciamentodeAssinaturasBackend.Domain.Entities;
 using GerenciamentodeAssinaturasBackend.Domain.Interfaces;
@@ -45,6 +46,26 @@ namespace GerenciamentodeAssinaturasBackend.Controllers
             if (plano == null) return NotFound();
 
             return Ok(plano);
+        }
+
+        // Preço do plano em cada ciclo de cobrança, já com os descontos aplicados
+        [HttpGet("{id}/ciclos")]
+        public async Task<IActionResult> GetCiclos(int id)
+        {
+            var plano = await _planoRepository.GetByIdAsync(id);
+            if (plano == null) return NotFound();
+
+            var ciclos = RegrasDeCobranca.Recorrencias.Select(r => new CicloDePrecoDto
+            {
+                Recorrencia = r,
+                Meses = RegrasDeCobranca.MesesDoCiclo(r),
+                MesesCobrados = RegrasDeCobranca.MesesCobrados(r),
+                Valor = RegrasDeCobranca.CalcularValor(plano.Valor, r),
+                ValorMensalEquivalente = RegrasDeCobranca.ValorMensalEquivalente(plano.Valor, r),
+                PercentualDesconto = RegrasDeCobranca.PercentualDeDesconto(r)
+            });
+
+            return Ok(ciclos);
         }
 
         [HttpPost]

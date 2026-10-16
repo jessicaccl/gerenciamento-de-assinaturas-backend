@@ -9,7 +9,7 @@ namespace GerenciamentodeAssinaturasBackend.BackgroundServices
     {
         private readonly ILogger<AssinaturaWorker> _logger;
         private readonly ConnectionFactory _factory;
-        private readonly string[] _filas = { "assinaturas_eventos", "planos_eventos", "usuarios_eventos", "auth_eventos" };
+        private readonly string[] _filas = { "assinaturas_eventos", "planos_eventos", "usuarios_eventos", "auth_eventos", "cobrancas_eventos" };
 
         public AssinaturaWorker(ILogger<AssinaturaWorker> logger, IConfiguration configuration)
         {

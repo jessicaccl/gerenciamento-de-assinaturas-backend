@@ -86,6 +86,28 @@ db/init.sql               # Estrutura do banco + dados de demonstração
 | GET | `/api/usuario` | Autenticado | Lista usuários (sem hash de senha nem documentos) |
 | PUT | `/api/usuario/{id}` | Próprio usuário ou Admin | Edita dados; só Admin altera cargo |
 | DELETE | `/api/usuario/{id}` | **Admin** | Remove usuário |
+| GET | `/api/planos/{id}/ciclos` | Autenticado | Preço do plano em cada ciclo, com desconto |
+| GET | `/api/cobrancas` | Autenticado | Lista cobranças (filtros: status, assinatura, período de vencimento) |
+| POST | `/api/cobrancas/{id}/pagamento` | Autenticado | Registra pagamento de cobrança pendente ou vencida |
+| POST | `/api/cobrancas/{id}/cancelar` | **Admin** | Cancela cobrança em aberto |
+| POST | `/api/cobrancas/gerar` | **Admin** | Executa a geração de cobranças na hora |
+
+## Cobranças
+
+Cada assinatura gera uma cobrança por ciclo. O vencimento é no início do período (cobrança antecipada).
+
+| Ciclo | Valor cobrado | Desconto |
+|---|---|---|
+| Mensal | 1× o valor do plano | — |
+| Trimestral | 3× | — |
+| Semestral | 5× | 1 mês grátis |
+| Anual | 10× | 2 meses grátis |
+
+- O `CobrancaWorker` roda na subida da API e a cada hora. Ele emite a cobrança do próximo ciclo 10 dias antes do vencimento (`Cobrancas:DiasDeAntecedencia`) e marca como **vencidas** as que passaram da data.
+- A geração é **idempotente**: a restrição única `(AssinaturaId, PeriodoInicio)` impede cobranças duplicadas, mesmo com execuções simultâneas.
+- O vencimento fica **ancorado no dia original**: uma assinatura iniciada em 31/01 vence em 28/02 e depois volta para 31/03.
+- Ao **cancelar** uma assinatura, só caem as cobranças que ainda não venceram; as dívidas vencidas continuam valendo. Ao **reativar**, o novo ciclo começa no dia da reativação, e o período inativo não é cobrado.
+- As regras de preço e de período ficam em `Domain/Services/RegrasDeCobranca.cs`, como funções puras cobertas por testes unitários.
 
 ## Mensageria
 
@@ -98,6 +120,7 @@ Toda operação relevante publica um evento em uma fila do RabbitMQ:
 | `usuarios_eventos` | Cadastro, edição e remoção de usuários |
 | `planos_eventos` | Alterações no catálogo de planos |
 | `assinaturas_eventos` | Novas assinaturas, cancelamentos e reativações |
+| `cobrancas_eventos` | Cobranças geradas, pagamentos e cancelamentos |
 
 Os consumidores tentam reconectar automaticamente enquanto o broker não está disponível, então a API não cai se o RabbitMQ demorar a subir.
 
@@ -112,7 +135,7 @@ Os consumidores tentam reconectar automaticamente enquanto o broker não está d
 
 ## Testes
 
-São testes de integração (requisições HTTP reais contra a API) e testes unitários de regras de negócio. Eles cobrem CRUD de planos, ciclo de vida da assinatura, cálculo de expiração e regras de segurança (401/403 e ausência de dados sensíveis nas respostas).
+São testes de integração (requisições HTTP reais contra a API) e testes unitários de regras de negócio. São 33 testes, que cobrem CRUD de planos, ciclo de vida da assinatura, regras de cobrança (descontos por ciclo, períodos, vencimento no fim do mês), geração e pagamento de cobranças e regras de segurança (401/403 e ausência de dados sensíveis nas respostas).
 
 Com o `docker compose` rodando:
 

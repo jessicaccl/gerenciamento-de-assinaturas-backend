@@ -3,6 +3,7 @@ using GerenciamentoAssinaturas.Domain.Entities;
 using GerenciamentoAssinaturas.Domain.Interfaces;
 using GerenciamentoAssinaturas.DTOs;
 using GerenciamentodeAssinaturasBackend.Infrastructure.Data;
+using GerenciamentodeAssinaturasBackend.Domain.Services;
 using System.Data;
 
 namespace GerenciamentoAssinaturas.Infrastructure.Repositories
@@ -24,7 +25,7 @@ namespace GerenciamentoAssinaturas.Infrastructure.Repositories
         public async Task<int> CriarAssinaturaAsync(CreateAssinaturaDto dto)
         {
             var dataInicio = DateTime.Now;
-            var dataExpiracao = CalcularExpiracao(dataInicio, dto.TipoRecorrencia);
+            var dataExpiracao = RegrasDeCobranca.FimDoPeriodo(dataInicio, dto.TipoRecorrencia!);
 
             var sql = @"
                 INSERT INTO Assinaturas 
@@ -54,18 +55,6 @@ namespace GerenciamentoAssinaturas.Infrastructure.Repositories
             {
                 return await conn.QueryAsync<Assinatura>(sql);
             }
-        }
-
-        private DateTime CalcularExpiracao(DateTime inicio, string recorrencia)
-        {
-            return recorrencia.ToLower() switch
-            {
-                "mensal" => inicio.AddMonths(1),
-                "trimestral" => inicio.AddMonths(3),
-                "semestral" => inicio.AddMonths(6),
-                "anual" => inicio.AddYears(1),
-                _ => inicio.AddMonths(1) 
-            };
         }
 
         public async Task AtualizarAssinaturaAsync(UpdateAssinaturaDto dto)

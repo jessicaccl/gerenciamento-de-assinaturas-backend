@@ -1,12 +1,8 @@
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.IdentityModel.Tokens;
-using System.IdentityModel.Tokens.Jwt;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using System.Security.Claims;
-using System.Text;
 
 namespace GerenciamentodeAssinaturas.Tests
 {
@@ -55,27 +51,8 @@ namespace GerenciamentodeAssinaturas.Tests
         private HttpClient CriarClienteComCargo(string cargo)
         {
             var client = _factory.CreateClient();
-            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", GerarToken(cargo));
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", TokenDeTeste.Gerar(cargo));
             return client;
-        }
-
-        private static string GerarToken(string cargo)
-        {
-            // Mesma chave do appsettings.Development.json (ambiente usado pelo WebApplicationFactory)
-            var key = Encoding.ASCII.GetBytes("chave-somente-para-desenvolvimento-local-assina-mais");
-            var tokenHandler = new JwtSecurityTokenHandler();
-            var tokenDescriptor = new SecurityTokenDescriptor
-            {
-                Subject = new ClaimsIdentity(new[]
-                {
-                    new Claim(ClaimTypes.NameIdentifier, "999"),
-                    new Claim(ClaimTypes.Email, $"{cargo.ToLower()}@teste.com"),
-                    new Claim(ClaimTypes.Role, cargo)
-                }),
-                Expires = DateTime.UtcNow.AddHours(1),
-                SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
-            };
-            return tokenHandler.WriteToken(tokenHandler.CreateToken(tokenDescriptor));
         }
     }
 }
