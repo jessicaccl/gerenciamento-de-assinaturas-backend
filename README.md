@@ -91,6 +91,7 @@ db/init.sql               # Estrutura do banco + dados de demonstração
 | POST | `/api/cobrancas/{id}/pagamento` | Autenticado | Registra pagamento de cobrança pendente ou vencida |
 | POST | `/api/cobrancas/{id}/cancelar` | **Admin** | Cancela cobrança em aberto |
 | POST | `/api/cobrancas/gerar` | **Admin** | Executa a geração de cobranças na hora |
+| GET | `/api/provisoes?mesesFuturos=6` | Autenticado | Painel financeiro: MRR, a receber, vencido, aging, provisão e previsão mensal |
 
 ## Cobranças
 
@@ -108,6 +109,24 @@ Cada assinatura gera uma cobrança por ciclo. O vencimento é no início do per�
 - O vencimento fica **ancorado no dia original**: uma assinatura iniciada em 31/01 vence em 28/02 e depois volta para 31/03.
 - Ao **cancelar** uma assinatura, só caem as cobranças que ainda não venceram; as dívidas vencidas continuam valendo. Ao **reativar**, o novo ciclo começa no dia da reativação, e o período inativo não é cobrado.
 - As regras de preço e de período ficam em `Domain/Services/RegrasDeCobranca.cs`, como funções puras cobertas por testes unitários.
+
+## Painel de provisões
+
+O endpoint `/api/provisoes` responde às perguntas financeiras do negócio:
+
+- **MRR (receita recorrente mensal)**: soma do valor mensal equivalente de cada assinatura ativa. Um plano anual de R$ 799,00 conta como R$ 66,58 por mês, porque o desconto já entra no cálculo.
+- **A receber em 30 dias**: cobranças pendentes mais os próximos ciclos que ainda nem foram emitidos (projetados a partir das assinaturas ativas).
+- **Previsão mensal**: 2 meses de histórico e até 12 meses à frente, separando o que foi recebido, o que está previsto e o que está em risco (vencido).
+- **Aging e provisão para inadimplência**: as cobranças vencidas são agrupadas por tempo de atraso, e cada faixa tem um percentual de risco:
+
+| Atraso | Risco provisionado |
+|---|---|
+| 1 a 30 dias | 30% |
+| 31 a 60 dias | 50% |
+| 61 a 90 dias | 80% |
+| Mais de 90 dias | 100% |
+
+O cálculo fica em `CalculadoraDoPainel` (função pura que recebe "hoje" como parâmetro) e em `RegrasDeProvisao`, ambos cobertos por testes unitários.
 
 ## Mensageria
 
@@ -135,7 +154,7 @@ Os consumidores tentam reconectar automaticamente enquanto o broker não está d
 
 ## Testes
 
-São testes de integração (requisições HTTP reais contra a API) e testes unitários de regras de negócio. São 33 testes, que cobrem CRUD de planos, ciclo de vida da assinatura, regras de cobrança (descontos por ciclo, períodos, vencimento no fim do mês), geração e pagamento de cobranças e regras de segurança (401/403 e ausência de dados sensíveis nas respostas).
+São testes de integração (requisições HTTP reais contra a API) e testes unitários de regras de negócio. São 49 testes, que cobrem CRUD de planos, ciclo de vida da assinatura, regras de cobrança (descontos por ciclo, períodos, vencimento no fim do mês), geração e pagamento de cobranças, MRR, projeção de recebimentos, aging e provisão para inadimplência e regras de segurança (401/403 e ausência de dados sensíveis nas respostas).
 
 Com o `docker compose` rodando:
 
