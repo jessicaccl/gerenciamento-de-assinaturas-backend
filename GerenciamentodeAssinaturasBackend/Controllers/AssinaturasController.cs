@@ -20,13 +20,16 @@ namespace GerenciamentoAssinaturas.Controllers
         private readonly IRabbitMQService _rabbitMQService;
         private readonly GeradorDeCobrancas _geradorDeCobrancas;
         private readonly ICobrancaRepository _cobrancaRepository;
+        private readonly IClienteRepository _clienteRepository;
 
         public AssinaturasController(
             IAssinaturaRepository repository,
             IRabbitMQService rabbitMQService,
             GeradorDeCobrancas geradorDeCobrancas,
-            ICobrancaRepository cobrancaRepository)
+            ICobrancaRepository cobrancaRepository,
+            IClienteRepository clienteRepository)
         {
+            _clienteRepository = clienteRepository;
             _repository = repository;
             _rabbitMQService = rabbitMQService;
             _geradorDeCobrancas = geradorDeCobrancas;
@@ -39,6 +42,8 @@ namespace GerenciamentoAssinaturas.Controllers
             if (!ModelState.IsValid) return BadRequest(ModelState);
             if (!RegrasDeCobranca.EhRecorrenciaValida(dto.TipoRecorrencia))
                 return BadRequest($"Ciclo inválido. Use: {string.Join(", ", RegrasDeCobranca.Recorrencias)}.");
+            if (await _clienteRepository.ObterPorIdAsync(dto.ClienteId) == null)
+                return BadRequest("Cliente não encontrado.");
 
             dto.TipoRecorrencia = RegrasDeCobranca.Normalizar(dto.TipoRecorrencia!);
             var id = await _repository.CriarAssinaturaAsync(dto);

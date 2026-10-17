@@ -25,10 +25,21 @@ CREATE TABLE IF NOT EXISTS Usuarios (
     TokenConfirmacao  TEXT
 );
 
+-- Quem paga. Um cliente pode ter várias assinaturas.
+CREATE TABLE IF NOT EXISTS Clientes (
+    Id            SERIAL PRIMARY KEY,
+    Nome          VARCHAR(100) NOT NULL,
+    Email         VARCHAR(150),            -- opcional; sem e-mail não há lembretes
+    Documento     VARCHAR(14),             -- CPF ou CNPJ, só dígitos (opcional)
+    Telefone      VARCHAR(20),
+    DataCadastro  TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS UQ_Clientes_Documento ON Clientes (Documento) WHERE Documento IS NOT NULL;
+
 CREATE TABLE IF NOT EXISTS Assinaturas (
     Id               SERIAL PRIMARY KEY,
-    ClienteNome      VARCHAR(100) NOT NULL,
-    ClienteEmail     VARCHAR(150),             -- opcional; sem e-mail não há lembretes
+    ClienteId        INT          NOT NULL REFERENCES Clientes(Id),
     PlanoId          INT          NOT NULL REFERENCES Planos(Id),
     TipoRecorrencia  VARCHAR(20)  NOT NULL,   -- Mensal, Trimestral, Semestral, Anual
     FormaPagamento   VARCHAR(50)  NOT NULL,
@@ -36,6 +47,8 @@ CREATE TABLE IF NOT EXISTS Assinaturas (
     DataExpiracao    TIMESTAMP,
     Status           VARCHAR(20)  NOT NULL DEFAULT 'Ativo'  -- Ativo, Inativo
 );
+
+CREATE INDEX IF NOT EXISTS IX_Assinaturas_Cliente ON Assinaturas (ClienteId);
 
 -- Uma cobrança por período da assinatura. O vencimento é o início do período (cobrança antecipada).
 CREATE TABLE IF NOT EXISTS Cobrancas (
@@ -79,20 +92,42 @@ INSERT INTO Usuarios (Nome, Email, SenhaHash, Cargo) VALUES
     ('Conta Demo',     'demo@assinamais.dev',        crypt('demo123', gen_salt('bf', 11)), 'Admin'),
     ('Ana Colaboradora', 'colaborador@assinamais.dev', crypt('demo123', gen_salt('bf', 11)), 'Colaborador');
 
--- E-mails fictícios no domínio reservado .example (RFC 2606): nunca chegam a ninguém de verdade
-INSERT INTO Assinaturas (ClienteNome, PlanoId, TipoRecorrencia, FormaPagamento, DataInicio, Status) VALUES
-    ('Padaria Pão Quente',     1, 'Mensal',     'Pix',               NOW() - INTERVAL '20 days',  'Ativo'),
-    ('Studio Fit',             2, 'Anual',      'Cartão de Crédito', NOW() - INTERVAL '60 days',  'Ativo'),
-    ('Clínica Bem Viver',      3, 'Semestral',  'Boleto',            NOW() - INTERVAL '45 days',  'Ativo'),
-    ('Livraria Página 2',      2, 'Mensal',     'Cartão de Crédito', NOW() - INTERVAL '25 days',  'Ativo'),
-    ('Pet Shop Amigo Fiel',    1, 'Trimestral', 'Pix',               NOW() - INTERVAL '120 days', 'Inativo'),
-    ('Escola de Idiomas Go',   3, 'Anual',      'Boleto',            NOW() - INTERVAL '10 days',  'Ativo'),
-    ('Café Grão Nobre',        2, 'Mensal',     'Cartão de Crédito', NOW() - INTERVAL '100 days', 'Ativo'),
-    ('Academia Ritmo',         3, 'Mensal',     'Boleto',            NOW() - INTERVAL '80 days',  'Ativo'),
-    ('Barbearia Navalha',      1, 'Mensal',     'Pix',               NOW() - INTERVAL '70 days',  'Ativo'),
-    ('Coworking Hub Sul',      3, 'Trimestral', 'Boleto',            NOW() - INTERVAL '95 days',  'Ativo'),
-    ('Floricultura Primavera', 1, 'Anual',      'Pix',               NOW() - INTERVAL '200 days', 'Ativo'),
-    ('Agência Pixel',          2, 'Mensal',     'Cartão de Crédito', NOW() - INTERVAL '15 days',  'Ativo');
+-- Clientes fictícios: e-mails no domínio reservado .example (RFC 2606), que nunca chegam a ninguém,
+-- e CPF/CNPJ inventados, mas com dígitos verificadores válidos.
+INSERT INTO Clientes (Nome, Email, Documento, Telefone) VALUES
+    ('Padaria Pão Quente',     'financeiro@paoquente.example',      '12345678000195', '(11) 98765-4321'),
+    ('Studio Fit',             'contato@studiofit.example',         '12345678909',    '(11) 96666-5555'),
+    ('Clínica Bem Viver',      'adm@bemviver.example',              '34567890000130', '(31) 3333-4444'),
+    ('Livraria Página 2',      'livraria@pagina2.example',          '23456789000195', '(21) 99876-5432'),
+    ('Pet Shop Amigo Fiel',    NULL,                                '34567890175',    '(71) 90000-9999'),   -- sem e-mail de propósito
+    ('Escola de Idiomas Go',   'secretaria@idiomasgo.example',      '67890123000116', '(61) 95555-4444'),
+    ('Café Grão Nobre',        'cafe@graonobre.example',            '78901234000105', '(19) 94444-3333'),
+    ('Academia Ritmo',         'financeiro@academiaritmo.example',  '45678901000175', '(41) 98888-7777'),
+    ('Barbearia Navalha',      'contato@navalha.example',           '23456789092',    '(85) 93333-2222'),
+    ('Coworking Hub Sul',      'admin@hubsul.example',              '56789012000100', '(51) 97777-6666'),
+    ('Floricultura Primavera', 'flores@primavera.example',          '89012345000179', '(48) 92222-1111'),
+    ('Agência Pixel',          'ola@agenciapixel.example',          '90123456000131', '(11) 91111-0000'),
+    ('Mercado Bom Preço',      'compras@bompreco.example',          NULL,             '(11) 97000-1234');  -- recém-cadastrado, ainda sem assinatura
+
+-- A Agência Pixel tem duas assinaturas, para mostrar um cliente com mais de um plano
+INSERT INTO Assinaturas (ClienteId, PlanoId, TipoRecorrencia, FormaPagamento, DataInicio, Status)
+SELECT cl.Id, v.PlanoId, v.Recorrencia, v.Pagamento, NOW() - (v.Dias || ' days')::interval, v.Status
+FROM (VALUES
+    ('Padaria Pão Quente',     1, 'Mensal',     'Pix',               20,  'Ativo'),
+    ('Studio Fit',             2, 'Anual',      'Cartão de Crédito', 60,  'Ativo'),
+    ('Clínica Bem Viver',      3, 'Semestral',  'Boleto',            45,  'Ativo'),
+    ('Livraria Página 2',      2, 'Mensal',     'Cartão de Crédito', 25,  'Ativo'),
+    ('Pet Shop Amigo Fiel',    1, 'Trimestral', 'Pix',               120, 'Inativo'),
+    ('Escola de Idiomas Go',   3, 'Anual',      'Boleto',            10,  'Ativo'),
+    ('Café Grão Nobre',        2, 'Mensal',     'Cartão de Crédito', 100, 'Ativo'),
+    ('Academia Ritmo',         3, 'Mensal',     'Boleto',            80,  'Ativo'),
+    ('Barbearia Navalha',      1, 'Mensal',     'Pix',               70,  'Ativo'),
+    ('Coworking Hub Sul',      3, 'Trimestral', 'Boleto',            95,  'Ativo'),
+    ('Floricultura Primavera', 1, 'Anual',      'Pix',               200, 'Ativo'),
+    ('Agência Pixel',          2, 'Mensal',     'Cartão de Crédito', 15,  'Ativo'),
+    ('Agência Pixel',          1, 'Mensal',     'Pix',               40,  'Ativo')
+) AS v (ClienteNome, PlanoId, Recorrencia, Pagamento, Dias, Status)
+JOIN Clientes cl ON cl.Nome = v.ClienteNome;
 
 -- Histórico de cobranças: um registro por ciclo, do início da assinatura até hoje.
 -- Valores seguem a regra de ciclos: mensal 1x, trimestral 3x, semestral 5x (1 mês grátis) e anual 10x (2 meses grátis).
@@ -104,6 +139,7 @@ WITH ciclos AS (
            CASE a.TipoRecorrencia WHEN 'Mensal' THEN 1 WHEN 'Trimestral' THEN 3 WHEN 'Semestral' THEN 5 ELSE 10 END AS MesesCobrados,
            COALESCE(v.Vencidas, '{}') AS Vencidas
     FROM Assinaturas a
+    JOIN Clientes cl ON cl.Id = a.ClienteId
     JOIN Planos pl ON pl.Id = a.PlanoId
     LEFT JOIN (VALUES
         ('Livraria Página 2',   ARRAY[0]),   -- 25 dias  (1 a 30)
@@ -111,7 +147,7 @@ WITH ciclos AS (
         ('Clínica Bem Viver',   ARRAY[0]),   -- 45 dias  (31 a 60)
         ('Academia Ritmo',      ARRAY[0]),   -- 80 dias  (61 a 90)
         ('Pet Shop Amigo Fiel', ARRAY[0])    -- 120 dias (mais de 90)
-    ) AS v (ClienteNome, Vencidas) ON v.ClienteNome = a.ClienteNome
+    ) AS v (ClienteNome, Vencidas) ON v.ClienteNome = cl.Nome
 ),
 periodos AS (
     SELECT c.*, k,
@@ -134,19 +170,7 @@ WHERE PeriodoInicio <= CURRENT_DATE
 UPDATE Assinaturas a
 SET DataExpiracao = (SELECT MAX(c.PeriodoFim) FROM Cobrancas c WHERE c.AssinaturaId = a.Id);
 
-UPDATE Assinaturas SET ClienteEmail = v.Email
-FROM (VALUES
-    ('Padaria Pão Quente',     'financeiro@paoquente.example'),
-    ('Studio Fit',             'contato@studiofit.example'),
-    ('Clínica Bem Viver',      'adm@bemviver.example'),
-    ('Livraria Página 2',      'livraria@pagina2.example'),
-    ('Escola de Idiomas Go',   'secretaria@idiomasgo.example'),
-    ('Café Grão Nobre',        'cafe@graonobre.example'),
-    ('Academia Ritmo',         'financeiro@academiaritmo.example'),
-    ('Barbearia Navalha',      'contato@navalha.example'),
-    ('Coworking Hub Sul',      'admin@hubsul.example'),
-    ('Floricultura Primavera', 'flores@primavera.example'),
-    ('Agência Pixel',          'ola@agenciapixel.example')
-    -- Pet Shop Amigo Fiel fica sem e-mail de propósito, para mostrar o caso "cliente sem e-mail"
-) AS v (ClienteNome, Email)
-WHERE Assinaturas.ClienteNome = v.ClienteNome;
+-- O cliente "existe desde" a primeira assinatura
+UPDATE Clientes cl
+SET DataCadastro = (SELECT MIN(a.DataInicio) FROM Assinaturas a WHERE a.ClienteId = cl.Id)
+WHERE EXISTS (SELECT 1 FROM Assinaturas a WHERE a.ClienteId = cl.Id);

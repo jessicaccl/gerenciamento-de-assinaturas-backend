@@ -77,6 +77,11 @@ db/init.sql               # Estrutura do banco + dados de demonstração
 | POST | `/api/auth/login` | Público | Retorna o token JWT |
 | GET | `/api/auth/me` | Autenticado | Dados do usuário logado |
 | POST | `/api/auth/validate-password` | Autenticado | Confirma a senha antes de ações críticas |
+| GET | `/api/clientes?busca=&situacao=` | Autenticado | Lista clientes com MRR, valor em aberto e situação (documento mascarado) |
+| GET | `/api/clientes/{id}` | Autenticado | Ficha do cliente: contato, assinaturas e histórico de cobranças |
+| POST / PUT | `/api/clientes` | Autenticado | Cadastra ou edita cliente (CPF/CNPJ validado) |
+| DELETE | `/api/clientes/{id}` | **Admin** | Exclui cliente sem assinaturas no histórico |
+| POST | `/api/clientes/{id}/lembrete` | Autenticado | Envia lembrete de todas as cobranças em aberto do cliente |
 | GET | `/api/planos` | Autenticado | Lista planos |
 | POST / PUT | `/api/planos` | **Admin** | Cria ou edita plano |
 | DELETE | `/api/planos/{id}` | **Admin** + senha | Remove plano sem assinaturas vinculadas |
@@ -95,6 +100,15 @@ db/init.sql               # Estrutura do banco + dados de demonstração
 | POST | `/api/cobrancas/lembretes/vencidas` | Autenticado | Envia lembrete para todas as cobranças vencidas |
 | GET | `/api/cobrancas/exportar` | Autenticado | Exporta as cobranças em CSV (mesmos filtros da listagem) |
 | GET | `/api/provisoes?mesesFuturos=6` | Autenticado | Painel financeiro: MRR, a receber, vencido, aging, provisão e previsão mensal |
+
+## Clientes
+
+O cliente é uma entidade própria e pode ter várias assinaturas. **Usuários** são as pessoas da equipe que operam o sistema; **clientes** são quem paga.
+
+- **CPF/CNPJ** opcional, validado pelos dígitos verificadores (`Domain/Services/Documento.cs`) e único por cliente. A listagem devolve o documento **mascarado** (`***.456.789-**`, `**.***.678/0001-95`); ele só aparece completo na ficha do cliente (minimização de dados, na linha da LGPD).
+- **Situação** calculada a partir das cobranças: *Inadimplente* se houver qualquer cobrança vencida, *A vencer* se houver pendente, *Em dia* se não houver nada em aberto.
+- O **e-mail** fica no cadastro do cliente e é usado pelos lembretes de cobrança.
+- Um cliente com assinaturas no histórico não pode ser excluído, para preservar o histórico financeiro.
 
 ## Cobranças
 
@@ -164,7 +178,7 @@ Os consumidores tentam reconectar automaticamente enquanto o broker não está d
 
 ## Testes
 
-São testes de integração (requisições HTTP reais contra a API) e testes unitários de regras de negócio. São 65 testes, que cobrem CRUD de planos, ciclo de vida da assinatura, regras de cobrança (descontos por ciclo, períodos, vencimento no fim do mês), geração e pagamento de cobranças, MRR, projeção de recebimentos, aging e provisão para inadimplência, regras de lembrete, envio de lembretes, exportação CSV e regras de segurança (401/403 e ausência de dados sensíveis nas respostas).
+São testes de integração (requisições HTTP reais contra a API) e testes unitários de regras de negócio. São 89 testes, que cobrem CRUD de planos, clientes (validação de CPF/CNPJ, máscara, situação, MRR por cliente), ciclo de vida da assinatura, regras de cobrança (descontos por ciclo, períodos, vencimento no fim do mês), geração e pagamento de cobranças, MRR, projeção de recebimentos, aging e provisão para inadimplência, regras de lembrete, envio de lembretes, exportação CSV e regras de segurança (401/403 e ausência de dados sensíveis nas respostas).
 
 Com o `docker compose` rodando:
 

@@ -29,9 +29,9 @@ namespace GerenciamentoAssinaturas.Infrastructure.Repositories
 
             var sql = @"
                 INSERT INTO Assinaturas 
-                (PlanoId, ClienteNome, ClienteEmail, TipoRecorrencia, FormaPagamento, DataInicio, DataExpiracao, Status)
+                (PlanoId, ClienteId, TipoRecorrencia, FormaPagamento, DataInicio, DataExpiracao, Status)
                 VALUES
-                (@PlanoId, @ClienteNome, @ClienteEmail, @TipoRecorrencia, @FormaPagamento, @DataInicio, @DataExpiracao, 'Ativo')
+                (@PlanoId, @ClienteId, @TipoRecorrencia, @FormaPagamento, @DataInicio, @DataExpiracao, 'Ativo')
                 RETURNING Id;";
 
             using (var conn = CreateConnection())
@@ -39,8 +39,7 @@ namespace GerenciamentoAssinaturas.Infrastructure.Repositories
                 return await conn.QuerySingleAsync<int>(sql, new
                 {
                     dto.PlanoId,
-                    dto.ClienteNome,
-                    ClienteEmail = string.IsNullOrWhiteSpace(dto.ClienteEmail) ? null : dto.ClienteEmail.Trim(),
+                    dto.ClienteId,
                     dto.TipoRecorrencia,
                     dto.FormaPagamento,
                     DataInicio = dataInicio,
@@ -51,7 +50,11 @@ namespace GerenciamentoAssinaturas.Infrastructure.Repositories
 
         public async Task<IEnumerable<Assinatura>> ListarTodasAsync()
         {
-            var sql = "SELECT * FROM Assinaturas";
+            var sql = @"
+                SELECT a.*, cl.Nome AS ClienteNome, cl.Email AS ClienteEmail
+                FROM Assinaturas a
+                JOIN Clientes cl ON cl.Id = a.ClienteId
+                ORDER BY cl.Nome";
             using (var conn = CreateConnection())
             {
                 return await conn.QueryAsync<Assinatura>(sql);
@@ -64,7 +67,6 @@ namespace GerenciamentoAssinaturas.Infrastructure.Repositories
             var sql = @"
                 UPDATE Assinaturas 
                 SET PlanoId = @PlanoId,
-                ClienteEmail = NULLIF(TRIM(@ClienteEmail), ''),
                 TipoRecorrencia = @TipoRecorrencia,
                 FormaPagamento = @FormaPagamento
                 WHERE Id = @Id";

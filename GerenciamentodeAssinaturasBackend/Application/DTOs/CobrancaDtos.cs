@@ -6,6 +6,7 @@ namespace GerenciamentodeAssinaturasBackend.Application.DTOs
     {
         public int Id { get; set; }
         public int AssinaturaId { get; set; }
+        public int ClienteId { get; set; }
         public string ClienteNome { get; set; } = string.Empty;
         public string? ClienteEmail { get; set; }
         public string PlanoNome { get; set; } = string.Empty;
@@ -25,6 +26,7 @@ namespace GerenciamentodeAssinaturasBackend.Application.DTOs
     {
         public string? Status { get; set; }
         public int? AssinaturaId { get; set; }
+        public int? ClienteId { get; set; }
         public DateTime? VencimentoDe { get; set; }
         public DateTime? VencimentoAte { get; set; }
     }

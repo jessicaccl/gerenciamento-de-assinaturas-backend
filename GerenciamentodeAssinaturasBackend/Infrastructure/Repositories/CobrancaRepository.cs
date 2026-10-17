@@ -21,19 +21,21 @@ namespace GerenciamentodeAssinaturasBackend.Infrastructure.Repositories
             // O status "Vencida" é calculado na consulta, então a listagem fica correta mesmo antes do worker rodar
             var sql = new StringBuilder(@"
                 SELECT * FROM (
-                    SELECT c.Id, c.AssinaturaId, a.ClienteNome, a.ClienteEmail, p.Nome AS PlanoNome, a.TipoRecorrencia,
+                    SELECT c.Id, c.AssinaturaId, a.ClienteId, cl.Nome AS ClienteNome, cl.Email AS ClienteEmail, p.Nome AS PlanoNome, a.TipoRecorrencia,
                            c.PeriodoInicio, c.PeriodoFim, c.DataVencimento, c.Valor,
                            CASE WHEN c.Status = 'Pendente' AND c.DataVencimento < @Hoje THEN 'Vencida' ELSE c.Status END AS Status,
                            c.DataPagamento, c.FormaPagamento,
                            (SELECT MAX(l.DataEnvio) FROM LembretesCobranca l WHERE l.CobrancaId = c.Id) AS UltimoLembrete
                     FROM Cobrancas c
                     JOIN Assinaturas a ON a.Id = c.AssinaturaId
+                    JOIN Clientes cl ON cl.Id = a.ClienteId
                     JOIN Planos p ON p.Id = a.PlanoId
                 ) AS cobrancas
                 WHERE 1 = 1");
 
             if (!string.IsNullOrWhiteSpace(filtro.Status)) sql.Append(" AND Status = @Status");
             if (filtro.AssinaturaId.HasValue) sql.Append(" AND AssinaturaId = @AssinaturaId");
+            if (filtro.ClienteId.HasValue) sql.Append(" AND ClienteId = @ClienteId");
             if (filtro.VencimentoDe.HasValue) sql.Append(" AND DataVencimento >= @VencimentoDe");
             if (filtro.VencimentoAte.HasValue) sql.Append(" AND DataVencimento <= @VencimentoAte");
             sql.Append(" ORDER BY DataVencimento DESC, Id DESC");
@@ -44,6 +46,7 @@ namespace GerenciamentodeAssinaturasBackend.Infrastructure.Repositories
                 Hoje = hoje.Date,
                 filtro.Status,
                 filtro.AssinaturaId,
+                filtro.ClienteId,
                 VencimentoDe = filtro.VencimentoDe?.Date,
                 VencimentoAte = filtro.VencimentoAte?.Date
             });

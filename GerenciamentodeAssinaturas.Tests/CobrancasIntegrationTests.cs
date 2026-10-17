@@ -79,7 +79,7 @@ namespace GerenciamentodeAssinaturas.Tests
             var response = await _admin.PostAsJsonAsync("/api/assinaturas", new
             {
                 PlanoId = planoId,
-                ClienteNome = "Cliente Ciclo Inválido",
+                ClienteId = await CriarClienteAsync(),
                 TipoRecorrencia = "Semanal",
                 FormaPagamento = "Pix"
             });
@@ -135,15 +135,14 @@ namespace GerenciamentodeAssinaturas.Tests
         }
 
         [Fact]
-        public async Task CriarAssinaturaComEmailInvalido_DeveRetornar400()
+        public async Task CriarAssinaturaParaClienteInexistente_DeveRetornar400()
         {
             var planoId = await CriarPlanoAsync(10m);
 
             var response = await _admin.PostAsJsonAsync("/api/assinaturas", new
             {
                 PlanoId = planoId,
-                ClienteNome = "Cliente E-mail Inválido",
-                ClienteEmail = "nao-e-email",
+                ClienteId = 999999,
                 TipoRecorrencia = "Mensal",
                 FormaPagamento = "Pix"
             });
@@ -171,14 +170,20 @@ namespace GerenciamentodeAssinaturas.Tests
             var response = await _admin.PostAsJsonAsync("/api/assinaturas", new
             {
                 PlanoId = planoId,
-                ClienteNome = "Cliente Teste Cobrança",
-                ClienteEmail = email,
+                ClienteId = await CriarClienteAsync(email),
                 TipoRecorrencia = recorrencia,
                 FormaPagamento = "Boleto"
             });
             response.EnsureSuccessStatusCode();
 
             return ((await response.Content.ReadFromJsonAsync<IdResposta>())!.Id, planoId);
+        }
+
+        private async Task<int> CriarClienteAsync(string? email = null)
+        {
+            var response = await _admin.PostAsJsonAsync("/api/clientes", new { Nome = "Cliente Teste Cobrança", Email = email });
+            response.EnsureSuccessStatusCode();
+            return (await response.Content.ReadFromJsonAsync<IdResposta>())!.Id;
         }
 
         private async Task<List<CobrancaResposta>> ListarCobrancasAsync(int assinaturaId) =>

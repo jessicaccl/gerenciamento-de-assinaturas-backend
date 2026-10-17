@@ -83,10 +83,14 @@ namespace GerenciamentodeAssinaturas.Tests
             var dadosPlano = await responsePlano.Content.ReadFromJsonAsync<PlanoIdResponse>();
             int idPlanoValido = dadosPlano.Id;
 
+            var responseCliente = await _client.PostAsJsonAsync("/api/clientes", new { Nome = "Teste Inativação" });
+            responseCliente.EnsureSuccessStatusCode();
+            var clienteId = (await responseCliente.Content.ReadFromJsonAsync<PlanoIdResponse>())!.Id;
+
             var novaAssinaturaDto = new
             {
                 PlanoId = idPlanoValido,
-                ClienteNome = "Teste Inativação",
+                ClienteId = clienteId,
                 TipoRecorrencia = "Mensal",
                 FormaPagamento = "Cartão"
             };
