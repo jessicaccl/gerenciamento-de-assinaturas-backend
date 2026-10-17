@@ -1,17 +1,13 @@
-﻿using System.Text;
+using System.Net;
+using System.Text;
 using System.Text.Json;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.DependencyInjection;
-using System;
-using System.IO;
-using System.Threading;
-using System.Threading.Tasks;
 using GerenciamentodeAssinaturasBackend.Application.Interfaces;
 
 namespace GerenciamentodeAssinaturasBackend.BackgroundServices
 {
+    // Consome a fila de e-mails e monta cada mensagem a partir de um template HTML em /Templates
     public class EmailConsumer : BackgroundService
     {
         private readonly IServiceProvider _serviceProvider;
@@ -34,7 +30,6 @@ namespace GerenciamentodeAssinaturasBackend.BackgroundServices
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-
             try
             {
                 _connection = await RabbitMQConexao.ConectarComRetentativaAsync(_factory, _logger, stoppingToken);
@@ -48,47 +43,19 @@ namespace GerenciamentodeAssinaturasBackend.BackgroundServices
                 {
                     try
                     {
-                        var body = ea.Body.ToArray();
-                        var mensagemJson = Encoding.UTF8.GetString(body);
-                        Console.WriteLine($"[EmailConsumer] Mensagem recebida: {mensagemJson}");
+                        using var doc = JsonDocument.Parse(Encoding.UTF8.GetString(ea.Body.ToArray()));
+                        var email = await MontarEmailAsync(doc.RootElement);
 
-                        using (var doc = JsonDocument.Parse(mensagemJson))
-                        {
-                            var root = doc.RootElement;
-                            if (root.TryGetProperty("Tipo", out var tipoProp))
-                            {
-                                string? tipo = tipoProp.GetString();
-                                string? emailDestino = root.GetProperty("EmailDestino").GetString();
-                                string? nome = root.GetProperty("Nome").GetString();
+                        if (email != null)
+                            await EnviarEmailComEscopo(email.Value.Destino, email.Value.Assunto, email.Value.Corpo);
 
-                                if (tipo == "BOAS_VINDAS" && !string.IsNullOrEmpty(emailDestino) && !string.IsNullOrEmpty(nome))
-                                {
-                                    string caminhoArquivo = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Templates", "BoasVindas.html");
-                                    string corpoEmail;
-                                    string assunto = "Bem-vindo(a) ao Assina+! 🎉";
-
-                                    if (File.Exists(caminhoArquivo))
-                                    {
-                                        string templateHtml = await File.ReadAllTextAsync(caminhoArquivo);
-                                        corpoEmail = templateHtml
-                                            .Replace("{{NOME}}", nome)
-                                            .Replace("{{URL_SISTEMA}}", _urlFrontend);
-                                    }
-                                    else
-                                    {
-                                        Console.WriteLine($"[ERRO] Template não encontrado em: {caminhoArquivo}");
-                                        corpoEmail = $"<h1>Olá {nome}, seja bem-vindo!</h1><p>Cadastro realizado com sucesso.</p>";
-                                    }
-
-                                    await EnviarEmailComEscopo(emailDestino, assunto, corpoEmail);
-                                }
-                            }
-                        }
                         await _channel.BasicAckAsync(ea.DeliveryTag, multiple: false, cancellationToken: stoppingToken);
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine($"[EmailConsumer] Erro: {ex.Message}");
+                        // Mensagem com problema é descartada (sem reenfileirar) para não travar a fila
+                        _logger.LogError(ex, "[EmailConsumer] Falha ao processar mensagem.");
+                        await _channel.BasicNackAsync(ea.DeliveryTag, multiple: false, requeue: false, cancellationToken: stoppingToken);
                     }
                 };
 
@@ -99,20 +66,79 @@ namespace GerenciamentodeAssinaturasBackend.BackgroundServices
                     await Task.Delay(1000, stoppingToken);
                 }
             }
+            catch (OperationCanceledException)
+            {
+                // Encerramento normal da aplicação
+            }
             catch (Exception ex)
             {
-                Console.WriteLine($"[EmailConsumer] Falha crítica: {ex.Message}");
+                _logger.LogError(ex, "[EmailConsumer] Falha crítica.");
             }
+        }
+
+        private async Task<(string Destino, string Assunto, string Corpo)?> MontarEmailAsync(JsonElement mensagem)
+        {
+            var tipo = Texto(mensagem, "Tipo");
+            var destino = Texto(mensagem, "EmailDestino");
+            var nome = Texto(mensagem, "Nome");
+
+            if (string.IsNullOrWhiteSpace(destino))
+            {
+                _logger.LogWarning("[EmailConsumer] Mensagem do tipo {Tipo} sem destinatário ignorada.", tipo);
+                return null;
+            }
+
+            switch (tipo)
+            {
+                case "BOAS_VINDAS":
+                    return (destino, "Bem-vindo(a) ao Assina+! 🎉", await RenderizarAsync("BoasVindas.html", new()
+                    {
+                        ["NOME"] = nome,
+                        ["URL_SISTEMA"] = _urlFrontend
+                    }));
+
+                case "LEMBRETE_COBRANCA":
+                    return (destino, Texto(mensagem, "Assunto"), await RenderizarAsync("LembreteCobranca.html", new()
+                    {
+                        ["NOME"] = nome,
+                        ["TITULO"] = Texto(mensagem, "Titulo"),
+                        ["MENSAGEM"] = Texto(mensagem, "Mensagem"),
+                        ["PLANO"] = Texto(mensagem, "Plano"),
+                        ["VALOR"] = Texto(mensagem, "Valor"),
+                        ["VENCIMENTO"] = Texto(mensagem, "Vencimento"),
+                        ["URL_SISTEMA"] = _urlFrontend
+                    }));
+
+                default:
+                    _logger.LogWarning("[EmailConsumer] Tipo de e-mail desconhecido: {Tipo}", tipo);
+                    return null;
+            }
+        }
+
+        private static string Texto(JsonElement mensagem, string propriedade) =>
+            mensagem.TryGetProperty(propriedade, out var valor) ? valor.ToString() : string.Empty;
+
+        // Os valores são escapados: o nome do cliente vem do cadastro e não pode injetar HTML no e-mail
+        private static async Task<string> RenderizarAsync(string template, Dictionary<string, string> valores)
+        {
+            var caminho = Path.Combine(AppContext.BaseDirectory, "Templates", template);
+            var html = await File.ReadAllTextAsync(caminho);
+
+            foreach (var (chave, valor) in valores)
+            {
+                var conteudo = chave == "URL_SISTEMA" ? valor : WebUtility.HtmlEncode(valor);
+                html = html.Replace("{{" + chave + "}}", conteudo);
+            }
+
+            return html;
         }
 
         private async Task EnviarEmailComEscopo(string email, string assunto, string corpoHtml)
         {
-            using (var scope = _serviceProvider.CreateScope())
-            {
-                var emailService = scope.ServiceProvider.GetRequiredService<IEmailService>();
-                await emailService.EnviarEmailAsync(email, assunto, corpoHtml);
-                Console.WriteLine($"[EmailConsumer] E-mail enviado para {email}");
-            }
+            using var scope = _serviceProvider.CreateScope();
+            var emailService = scope.ServiceProvider.GetRequiredService<IEmailService>();
+            await emailService.EnviarEmailAsync(email, assunto, corpoHtml);
+            _logger.LogInformation("[EmailConsumer] E-mail '{Assunto}' processado para {Email}.", assunto, email);
         }
 
         public override async Task StopAsync(CancellationToken cancellationToken)

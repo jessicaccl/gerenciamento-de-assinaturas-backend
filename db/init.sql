@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS Usuarios (
 CREATE TABLE IF NOT EXISTS Assinaturas (
     Id               SERIAL PRIMARY KEY,
     ClienteNome      VARCHAR(100) NOT NULL,
+    ClienteEmail     VARCHAR(150),             -- opcional; sem e-mail não há lembretes
     PlanoId          INT          NOT NULL REFERENCES Planos(Id),
     TipoRecorrencia  VARCHAR(20)  NOT NULL,   -- Mensal, Trimestral, Semestral, Anual
     FormaPagamento   VARCHAR(50)  NOT NULL,
@@ -53,6 +54,17 @@ CREATE TABLE IF NOT EXISTS Cobrancas (
 
 CREATE INDEX IF NOT EXISTS IX_Cobrancas_Status_Vencimento ON Cobrancas (Status, DataVencimento);
 
+-- Histórico de lembretes enviados. Os automáticos são únicos por cobrança e tipo; os manuais podem se repetir.
+CREATE TABLE IF NOT EXISTS LembretesCobranca (
+    Id          SERIAL PRIMARY KEY,
+    CobrancaId  INT          NOT NULL REFERENCES Cobrancas(Id),
+    Tipo        VARCHAR(30)  NOT NULL,   -- AVISO_VENCIMENTO, COBRANCA_VENCIDA, MANUAL
+    DataEnvio   TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS UQ_LembretesCobranca_Automaticos
+    ON LembretesCobranca (CobrancaId, Tipo) WHERE Tipo <> 'MANUAL';
+
 -- -------------------------------------------------------------
 -- Dados de demonstração
 -- -------------------------------------------------------------
@@ -67,6 +79,7 @@ INSERT INTO Usuarios (Nome, Email, SenhaHash, Cargo) VALUES
     ('Conta Demo',     'demo@assinamais.dev',        crypt('demo123', gen_salt('bf', 11)), 'Admin'),
     ('Ana Colaboradora', 'colaborador@assinamais.dev', crypt('demo123', gen_salt('bf', 11)), 'Colaborador');
 
+-- E-mails fictícios no domínio reservado .example (RFC 2606): nunca chegam a ninguém de verdade
 INSERT INTO Assinaturas (ClienteNome, PlanoId, TipoRecorrencia, FormaPagamento, DataInicio, Status) VALUES
     ('Padaria Pão Quente',     1, 'Mensal',     'Pix',               NOW() - INTERVAL '20 days',  'Ativo'),
     ('Studio Fit',             2, 'Anual',      'Cartão de Crédito', NOW() - INTERVAL '60 days',  'Ativo'),
@@ -120,3 +133,20 @@ WHERE PeriodoInicio <= CURRENT_DATE
 
 UPDATE Assinaturas a
 SET DataExpiracao = (SELECT MAX(c.PeriodoFim) FROM Cobrancas c WHERE c.AssinaturaId = a.Id);
+
+UPDATE Assinaturas SET ClienteEmail = v.Email
+FROM (VALUES
+    ('Padaria Pão Quente',     'financeiro@paoquente.example'),
+    ('Studio Fit',             'contato@studiofit.example'),
+    ('Clínica Bem Viver',      'adm@bemviver.example'),
+    ('Livraria Página 2',      'livraria@pagina2.example'),
+    ('Escola de Idiomas Go',   'secretaria@idiomasgo.example'),
+    ('Café Grão Nobre',        'cafe@graonobre.example'),
+    ('Academia Ritmo',         'financeiro@academiaritmo.example'),
+    ('Barbearia Navalha',      'contato@navalha.example'),
+    ('Coworking Hub Sul',      'admin@hubsul.example'),
+    ('Floricultura Primavera', 'flores@primavera.example'),
+    ('Agência Pixel',          'ola@agenciapixel.example')
+    -- Pet Shop Amigo Fiel fica sem e-mail de propósito, para mostrar o caso "cliente sem e-mail"
+) AS v (ClienteNome, Email)
+WHERE Assinaturas.ClienteNome = v.ClienteNome;

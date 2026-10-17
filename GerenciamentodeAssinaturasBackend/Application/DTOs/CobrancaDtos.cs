@@ -7,6 +7,7 @@ namespace GerenciamentodeAssinaturasBackend.Application.DTOs
         public int Id { get; set; }
         public int AssinaturaId { get; set; }
         public string ClienteNome { get; set; } = string.Empty;
+        public string? ClienteEmail { get; set; }
         public string PlanoNome { get; set; } = string.Empty;
         public string TipoRecorrencia { get; set; } = string.Empty;
         public DateTime PeriodoInicio { get; set; }
@@ -17,6 +18,7 @@ namespace GerenciamentodeAssinaturasBackend.Application.DTOs
         public DateTime? DataPagamento { get; set; }
         public string? FormaPagamento { get; set; }
         public int DiasEmAtraso { get; set; }
+        public DateTime? UltimoLembrete { get; set; }
     }
 
     public class FiltroCobrancasDto

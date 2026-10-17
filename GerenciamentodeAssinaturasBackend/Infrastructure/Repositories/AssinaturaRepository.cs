@@ -29,9 +29,9 @@ namespace GerenciamentoAssinaturas.Infrastructure.Repositories
 
             var sql = @"
                 INSERT INTO Assinaturas 
-                (PlanoId, ClienteNome, TipoRecorrencia, FormaPagamento, DataInicio, DataExpiracao, Status)
-                VALUES 
-                (@PlanoId, @ClienteNome, @TipoRecorrencia, @FormaPagamento, @DataInicio, @DataExpiracao, 'Ativo')
+                (PlanoId, ClienteNome, ClienteEmail, TipoRecorrencia, FormaPagamento, DataInicio, DataExpiracao, Status)
+                VALUES
+                (@PlanoId, @ClienteNome, @ClienteEmail, @TipoRecorrencia, @FormaPagamento, @DataInicio, @DataExpiracao, 'Ativo')
                 RETURNING Id;";
 
             using (var conn = CreateConnection())
@@ -40,6 +40,7 @@ namespace GerenciamentoAssinaturas.Infrastructure.Repositories
                 {
                     dto.PlanoId,
                     dto.ClienteNome,
+                    ClienteEmail = string.IsNullOrWhiteSpace(dto.ClienteEmail) ? null : dto.ClienteEmail.Trim(),
                     dto.TipoRecorrencia,
                     dto.FormaPagamento,
                     DataInicio = dataInicio,
@@ -63,6 +64,7 @@ namespace GerenciamentoAssinaturas.Infrastructure.Repositories
             var sql = @"
                 UPDATE Assinaturas 
                 SET PlanoId = @PlanoId,
+                ClienteEmail = NULLIF(TRIM(@ClienteEmail), ''),
                 TipoRecorrencia = @TipoRecorrencia,
                 FormaPagamento = @FormaPagamento
                 WHERE Id = @Id";

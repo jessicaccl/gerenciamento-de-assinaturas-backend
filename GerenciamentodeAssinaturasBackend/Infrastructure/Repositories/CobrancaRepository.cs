@@ -21,10 +21,11 @@ namespace GerenciamentodeAssinaturasBackend.Infrastructure.Repositories
             // O status "Vencida" é calculado na consulta, então a listagem fica correta mesmo antes do worker rodar
             var sql = new StringBuilder(@"
                 SELECT * FROM (
-                    SELECT c.Id, c.AssinaturaId, a.ClienteNome, p.Nome AS PlanoNome, a.TipoRecorrencia,
+                    SELECT c.Id, c.AssinaturaId, a.ClienteNome, a.ClienteEmail, p.Nome AS PlanoNome, a.TipoRecorrencia,
                            c.PeriodoInicio, c.PeriodoFim, c.DataVencimento, c.Valor,
                            CASE WHEN c.Status = 'Pendente' AND c.DataVencimento < @Hoje THEN 'Vencida' ELSE c.Status END AS Status,
-                           c.DataPagamento, c.FormaPagamento
+                           c.DataPagamento, c.FormaPagamento,
+                           (SELECT MAX(l.DataEnvio) FROM LembretesCobranca l WHERE l.CobrancaId = c.Id) AS UltimoLembrete
                     FROM Cobrancas c
                     JOIN Assinaturas a ON a.Id = c.AssinaturaId
                     JOIN Planos p ON p.Id = a.PlanoId
@@ -120,6 +121,18 @@ namespace GerenciamentodeAssinaturasBackend.Infrastructure.Repositories
 
             using var conn = _context.CreateConnection();
             return await conn.ExecuteAsync(sql, new { Id = id, DataPagamento = dataPagamento, FormaPagamento = formaPagamento }) > 0;
+        }
+
+        public async Task<bool> RegistrarLembreteAsync(int cobrancaId, string tipo)
+        {
+            // Lembretes automáticos são únicos por cobrança e tipo (índice parcial); os manuais podem se repetir
+            const string sql = @"
+                INSERT INTO LembretesCobranca (CobrancaId, Tipo)
+                VALUES (@CobrancaId, @Tipo)
+                ON CONFLICT (CobrancaId, Tipo) WHERE Tipo <> 'MANUAL' DO NOTHING";
+
+            using var conn = _context.CreateConnection();
+            return await conn.ExecuteAsync(sql, new { CobrancaId = cobrancaId, Tipo = tipo }) > 0;
         }
 
         public async Task<bool> CancelarAsync(int id)

@@ -17,6 +17,9 @@ namespace GerenciamentodeAssinaturasBackend.Domain.Interfaces
         Task<int> MarcarVencidasAsync(DateTime hoje);
         Task<bool> RegistrarPagamentoAsync(int id, DateTime dataPagamento, string? formaPagamento);
         Task<bool> CancelarAsync(int id);
+
+        // Retorna false quando o lembrete automático daquele tipo já tinha sido registrado
+        Task<bool> RegistrarLembreteAsync(int cobrancaId, string tipo);
         Task<int> CancelarFuturasDaAssinaturaAsync(int assinaturaId, DateTime hoje);
     }
 }

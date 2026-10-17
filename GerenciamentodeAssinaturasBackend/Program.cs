@@ -73,6 +73,7 @@ builder.Services.AddScoped<IUsuarioRepository, UsuarioRepository>();
 builder.Services.AddScoped<IAssinaturaRepository, AssinaturaRepository>();
 builder.Services.AddScoped<ICobrancaRepository, CobrancaRepository>();
 builder.Services.AddScoped<GeradorDeCobrancas>();
+builder.Services.AddScoped<ServicoDeLembretes>();
 builder.Services.AddHostedService<CobrancaWorker>();
 builder.Services.AddScoped<TokenService>();
 builder.Services.AddScoped<AuthService>();

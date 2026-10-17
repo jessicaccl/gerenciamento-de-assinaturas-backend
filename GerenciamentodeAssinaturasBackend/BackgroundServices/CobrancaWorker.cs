@@ -2,7 +2,7 @@ using GerenciamentodeAssinaturasBackend.Application.Services.Cobrancas;
 
 namespace GerenciamentodeAssinaturasBackend.BackgroundServices
 {
-    // Roda na subida da API e depois em intervalos: emite as cobranças dos novos ciclos e marca as vencidas
+    // Roda na subida da API e depois em intervalos: emite as cobranças dos novos ciclos, marca as vencidas e envia lembretes
     public class CobrancaWorker : BackgroundService
     {
         private readonly IServiceProvider _serviceProvider;
@@ -25,6 +25,9 @@ namespace GerenciamentodeAssinaturasBackend.BackgroundServices
                     using var scope = _serviceProvider.CreateScope();
                     var gerador = scope.ServiceProvider.GetRequiredService<GeradorDeCobrancas>();
                     await gerador.ProcessarAsync(DateTime.Today);
+
+                    var lembretes = scope.ServiceProvider.GetRequiredService<ServicoDeLembretes>();
+                    await lembretes.EnviarAutomaticosAsync(DateTime.Today);
                 }
                 catch (Exception ex)
                 {

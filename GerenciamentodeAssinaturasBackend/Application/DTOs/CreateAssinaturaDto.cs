@@ -10,6 +10,11 @@ namespace GerenciamentoAssinaturas.DTOs
         [Required(ErrorMessage = "O nome do cliente é obrigatório")]
         public string? ClienteNome { get; set; }
 
+        // Opcional: sem e-mail, a assinatura funciona normalmente, só não recebe lembretes de cobrança
+        [EmailAddress(ErrorMessage = "E-mail do cliente inválido")]
+        [StringLength(150)]
+        public string? ClienteEmail { get; set; }
+
         [Required(ErrorMessage = "O ciclo de cobrança é obrigatório")]
         public string? TipoRecorrencia { get; set; } 
 

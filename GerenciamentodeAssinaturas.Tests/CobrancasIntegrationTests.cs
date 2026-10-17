@@ -98,6 +98,59 @@ namespace GerenciamentodeAssinaturas.Tests
                 ("Mensal", 60m), ("Trimestral", 180m), ("Semestral", 300m), ("Anual", 600m));
         }
 
+        [Fact]
+        public async Task EnviarLembrete_ComEmail_DeveRegistrarODataDoLembrete()
+        {
+            var (assinaturaId, _) = await CriarAssinaturaAsync(valorMensal: 40m, recorrencia: "Mensal", email: "cliente@teste.example");
+            var cobranca = (await ListarCobrancasAsync(assinaturaId)).Single();
+
+            var response = await _admin.PostAsync($"/api/cobrancas/{cobranca.Id}/lembrete", null);
+
+            response.StatusCode.Should().Be(HttpStatusCode.OK);
+            (await ListarCobrancasAsync(assinaturaId)).Single().UltimoLembrete.Should().NotBeNull();
+        }
+
+        [Fact]
+        public async Task EnviarLembrete_SemEmail_DeveRetornar422()
+        {
+            var (assinaturaId, _) = await CriarAssinaturaAsync(valorMensal: 40m, recorrencia: "Mensal");
+            var cobranca = (await ListarCobrancasAsync(assinaturaId)).Single();
+
+            var response = await _admin.PostAsync($"/api/cobrancas/{cobranca.Id}/lembrete", null);
+
+            response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+        }
+
+        [Fact]
+        public async Task Exportar_DeveRetornarCsvComAsCobrancasDoFiltro()
+        {
+            var (assinaturaId, _) = await CriarAssinaturaAsync(valorMensal: 40m, recorrencia: "Mensal");
+
+            var response = await _admin.GetAsync($"/api/cobrancas/exportar?assinaturaId={assinaturaId}");
+
+            response.StatusCode.Should().Be(HttpStatusCode.OK);
+            response.Content.Headers.ContentType!.MediaType.Should().Be("text/csv");
+            var csv = await response.Content.ReadAsStringAsync();
+            csv.Should().Contain("Cliente;E-mail;Plano").And.Contain("Cliente Teste Cobrança");
+        }
+
+        [Fact]
+        public async Task CriarAssinaturaComEmailInvalido_DeveRetornar400()
+        {
+            var planoId = await CriarPlanoAsync(10m);
+
+            var response = await _admin.PostAsJsonAsync("/api/assinaturas", new
+            {
+                PlanoId = planoId,
+                ClienteNome = "Cliente E-mail Inválido",
+                ClienteEmail = "nao-e-email",
+                TipoRecorrencia = "Mensal",
+                FormaPagamento = "Pix"
+            });
+
+            response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        }
+
         private async Task<int> CriarPlanoAsync(decimal valorMensal)
         {
             var response = await _admin.PostAsJsonAsync("/api/planos", new
@@ -111,7 +164,7 @@ namespace GerenciamentodeAssinaturas.Tests
             return (await response.Content.ReadFromJsonAsync<IdResposta>())!.Id;
         }
 
-        private async Task<(int assinaturaId, int planoId)> CriarAssinaturaAsync(decimal valorMensal, string recorrencia)
+        private async Task<(int assinaturaId, int planoId)> CriarAssinaturaAsync(decimal valorMensal, string recorrencia, string? email = null)
         {
             var planoId = await CriarPlanoAsync(valorMensal);
 
@@ -119,6 +172,7 @@ namespace GerenciamentodeAssinaturas.Tests
             {
                 PlanoId = planoId,
                 ClienteNome = "Cliente Teste Cobrança",
+                ClienteEmail = email,
                 TipoRecorrencia = recorrencia,
                 FormaPagamento = "Boleto"
             });
@@ -139,6 +193,6 @@ namespace GerenciamentodeAssinaturas.Tests
 
         private record IdResposta(int Id);
         private record CicloResposta(string Recorrencia, decimal Valor);
-        private record CobrancaResposta(int Id, decimal Valor, string Status, DateTime DataVencimento, DateTime PeriodoFim, string? FormaPagamento);
+        private record CobrancaResposta(int Id, decimal Valor, string Status, DateTime DataVencimento, DateTime PeriodoFim, string? FormaPagamento, DateTime? UltimoLembrete);
     }
 }

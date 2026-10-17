@@ -6,6 +6,7 @@ namespace GerenciamentoAssinaturas.Domain.Entities
     {
         public int Id { get; set; }
         public string? ClienteNome { get; set; }
+        public string? ClienteEmail { get; set; }
         public int PlanoId { get; set; }
         public string? TipoRecorrencia { get; set; } 
         public string? FormaPagamento { get; set; }  

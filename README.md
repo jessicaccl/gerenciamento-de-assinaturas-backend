@@ -91,6 +91,9 @@ db/init.sql               # Estrutura do banco + dados de demonstração
 | POST | `/api/cobrancas/{id}/pagamento` | Autenticado | Registra pagamento de cobrança pendente ou vencida |
 | POST | `/api/cobrancas/{id}/cancelar` | **Admin** | Cancela cobrança em aberto |
 | POST | `/api/cobrancas/gerar` | **Admin** | Executa a geração de cobranças na hora |
+| POST | `/api/cobrancas/{id}/lembrete` | Autenticado | Envia lembrete de pagamento por e-mail ao cliente |
+| POST | `/api/cobrancas/lembretes/vencidas` | Autenticado | Envia lembrete para todas as cobranças vencidas |
+| GET | `/api/cobrancas/exportar` | Autenticado | Exporta as cobranças em CSV (mesmos filtros da listagem) |
 | GET | `/api/provisoes?mesesFuturos=6` | Autenticado | Painel financeiro: MRR, a receber, vencido, aging, provisão e previsão mensal |
 
 ## Cobranças
@@ -126,7 +129,14 @@ O endpoint `/api/provisoes` responde às perguntas financeiras do negócio:
 | 61 a 90 dias | 80% |
 | Mais de 90 dias | 100% |
 
-O cálculo fica em `CalculadoraDoPainel` (função pura que recebe "hoje" como parâmetro) e em `RegrasDeProvisao`, ambos cobertos por testes unitários.
+## Lembretes e exportação
+
+- **Lembretes automáticos**: o `CobrancaWorker` avisa o cliente 3 dias antes do vencimento (`Lembretes:DiasAntesDoVencimento`) e avisa de novo quando a cobrança vence. Cada lembrete automático é enviado uma única vez por cobrança: um índice único parcial em `LembretesCobranca` garante isso.
+- **Lembretes manuais**: pela tela de cobranças (um por vez) ou pelo botão "Notificar vencidas" do painel. Esses podem ser repetidos.
+- O envio passa pela fila `emails_queue` do RabbitMQ. O `EmailConsumer` monta o e-mail a partir de `Templates/LembreteCobranca.html`, e os dados do cliente são escapados para não injetar HTML. O e-mail do cliente é opcional; sem ele, a assinatura funciona normalmente, só não recebe lembretes.
+- **CSV**: separador `;`, vírgula decimal e UTF-8 com BOM, para abrir direto no Excel em português. Inclui a provisão de cada cobrança vencida. Campos com `;`, aspas ou quebras de linha são escapados, e textos que começam com `=`, `+`, `-` ou `@` não viram fórmula (proteção contra CSV injection).
+
+O cálculo do painel fica em `CalculadoraDoPainel` (função pura que recebe "hoje" como parâmetro) e em `RegrasDeProvisao`, ambos cobertos por testes unitários.
 
 ## Mensageria
 
@@ -134,7 +144,7 @@ Toda operação relevante publica um evento em uma fila do RabbitMQ:
 
 | Fila | Conteúdo |
 |---|---|
-| `emails_queue` | Pedidos de envio de e-mail (boas-vindas) |
+| `emails_queue` | Pedidos de envio de e-mail (boas-vindas e lembretes de cobrança) |
 | `auth_eventos` | Logins realizados |
 | `usuarios_eventos` | Cadastro, edição e remoção de usuários |
 | `planos_eventos` | Alterações no catálogo de planos |
@@ -154,7 +164,7 @@ Os consumidores tentam reconectar automaticamente enquanto o broker não está d
 
 ## Testes
 
-São testes de integração (requisições HTTP reais contra a API) e testes unitários de regras de negócio. São 49 testes, que cobrem CRUD de planos, ciclo de vida da assinatura, regras de cobrança (descontos por ciclo, períodos, vencimento no fim do mês), geração e pagamento de cobranças, MRR, projeção de recebimentos, aging e provisão para inadimplência e regras de segurança (401/403 e ausência de dados sensíveis nas respostas).
+São testes de integração (requisições HTTP reais contra a API) e testes unitários de regras de negócio. São 65 testes, que cobrem CRUD de planos, ciclo de vida da assinatura, regras de cobrança (descontos por ciclo, períodos, vencimento no fim do mês), geração e pagamento de cobranças, MRR, projeção de recebimentos, aging e provisão para inadimplência, regras de lembrete, envio de lembretes, exportação CSV e regras de segurança (401/403 e ausência de dados sensíveis nas respostas).
 
 Com o `docker compose` rodando:
 
