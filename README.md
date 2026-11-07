@@ -167,6 +167,25 @@ Toda operação relevante publica um evento em uma fila do RabbitMQ:
 
 Os consumidores tentam reconectar automaticamente enquanto o broker não está disponível, então a API não cai se o RabbitMQ demorar a subir.
 
+## Segurança
+
+| Camada | Como está protegido |
+|---|---|
+| **Rotas da API** | Todas exigem token JWT, menos login e cadastro. Ações administrativas (planos, exclusões, cancelamento de cobrança) exigem perfil **Admin**, verificado no servidor |
+| **Senhas** | Guardadas só como hash **BCrypt** (com salt). Cadastro exige no mínimo 8 caracteres, com letras e números |
+| **Limite de acesso** | 5 tentativas de senha por minuto por IP (login, cadastro e confirmações de senha) e 120 requisições por minuto por usuário. Acima disso, a resposta é `429` com `Retry-After` |
+| **Token JWT** | Assinado com HMAC-SHA256, chave fora do código, emissor e público validados, validade de 8 horas |
+| **Dados sensíveis** | Respostas nunca trazem hash de senha; CPF/CNPJ aparece mascarado nas listagens |
+| **Banco** | Consultas parametrizadas com Dapper (sem SQL montado com texto do usuário) |
+| **Erros** | Exceções viram `500` genérico (ProblemDetails); detalhes ficam só no log |
+| **HTTP** | CORS restrito ao frontend, HSTS em produção e cabeçalhos `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy` e `Permissions-Policy` |
+| **E-mail e CSV** | Dados do cliente escapados no HTML do e-mail; CSV protegido contra injeção de fórmulas |
+
+**Limites conhecidos** (decisões conscientes para o escopo de portfólio):
+- O token fica no `localStorage` do navegador. Em produção, um cookie `HttpOnly` reduziria o impacto de um eventual XSS.
+- O cadastro é aberto, para quem avalia o projeto poder testar. Num sistema real, novos usuários entrariam por convite do Admin.
+- O limite por IP não impede um ataque distribuído entre muitos IPs; para isso, o próximo passo seria bloqueio temporário por conta e um WAF.
+
 ## Decisões técnicas
 
 - **Dapper em vez de EF Core**: SQL explícito e mais controle sobre as consultas, num domínio pequeno.
@@ -178,7 +197,7 @@ Os consumidores tentam reconectar automaticamente enquanto o broker não está d
 
 ## Testes
 
-São testes de integração (requisições HTTP reais contra a API) e testes unitários de regras de negócio. São 89 testes, que cobrem CRUD de planos, clientes (validação de CPF/CNPJ, máscara, situação, MRR por cliente), ciclo de vida da assinatura, regras de cobrança (descontos por ciclo, períodos, vencimento no fim do mês), geração e pagamento de cobranças, MRR, projeção de recebimentos, aging e provisão para inadimplência, regras de lembrete, envio de lembretes, exportação CSV e regras de segurança (401/403 e ausência de dados sensíveis nas respostas).
+São testes de integração (requisições HTTP reais contra a API) e testes unitários de regras de negócio. São 95 testes, que cobrem CRUD de planos, clientes (validação de CPF/CNPJ, máscara, situação, MRR por cliente), ciclo de vida da assinatura, regras de cobrança (descontos por ciclo, períodos, vencimento no fim do mês), geração e pagamento de cobranças, MRR, projeção de recebimentos, aging e provisão para inadimplência, regras de lembrete, envio de lembretes, exportação CSV e regras de segurança (401/403, limite de tentativas, cabeçalhos, token de outro emissor, senha fraca e ausência de dados sensíveis nas respostas).
 
 Com o `docker compose` rodando:
 

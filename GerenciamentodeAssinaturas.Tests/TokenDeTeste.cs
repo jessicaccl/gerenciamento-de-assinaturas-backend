@@ -22,6 +22,8 @@ namespace GerenciamentodeAssinaturas.Tests
                     new Claim(ClaimTypes.Email, $"{cargo.ToLower()}@teste.com"),
                     new Claim(ClaimTypes.Role, cargo)
                 }),
+                Issuer = "AssinaMais.Api",
+                Audience = "AssinaMais.Web",
                 Expires = DateTime.UtcNow.AddHours(1),
                 SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
             };

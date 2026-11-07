@@ -3,6 +3,8 @@ using GerenciamentodeAssinaturasBackend.Domain.Entities;
 using GerenciamentodeAssinaturasBackend.Domain.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.RateLimiting;
+using GerenciamentodeAssinaturasBackend.Infrastructure.Seguranca;
 using System.Security.Claims;
 using GerenciamentodeAssinaturasBackend.Application.Interfaces;
 using GerenciamentodeAssinaturasBackend.Application.Services.Auth;
@@ -28,6 +30,7 @@ namespace GerenciamentodeAssinaturasBackend.Controllers
         }
 
         [HttpPost("login")]
+        [EnableRateLimiting(ConfiguracaoDeSeguranca.PoliticaDeSenha)]
         public async Task<IActionResult> Login([FromBody] LoginDto loginDto)
         {
             var resultado = await _authService.LoginAsync(loginDto);
@@ -50,6 +53,7 @@ namespace GerenciamentodeAssinaturasBackend.Controllers
         }
 
         [HttpPost("register")]
+        [EnableRateLimiting(ConfiguracaoDeSeguranca.PoliticaDeSenha)]
         public async Task<IActionResult> Register([FromBody] RegisterDto dto)
         {
             var usuarioExistente = await _usuarioRepository.GetUsuarioByEmailAsync(dto.Email!);
@@ -114,6 +118,7 @@ namespace GerenciamentodeAssinaturasBackend.Controllers
         }
 
         [HttpPost("validate-password")]
+        [EnableRateLimiting(ConfiguracaoDeSeguranca.PoliticaDeSenha)]
         [Authorize]
         public async Task<IActionResult> ValidatePassword([FromBody] ValidatePasswordDto dto)
         {

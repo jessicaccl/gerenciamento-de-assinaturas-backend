@@ -5,10 +5,6 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using System.Text;
-using System.Security.Claims;
-using Microsoft.IdentityModel.Tokens;
-using System.IdentityModel.Tokens.Jwt;
 using Xunit;
 
 namespace GerenciamentodeAssinaturas.Tests
@@ -20,7 +16,7 @@ namespace GerenciamentodeAssinaturas.Tests
         public PlanosIntegrationTests(WebApplicationFactory<Program> factory)
         {
             _client = factory.CreateClient();
-            var token = GerarTokenParaTeste();
+            var token = TokenDeTeste.Gerar("Admin");
             _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
         }
 
@@ -118,24 +114,6 @@ namespace GerenciamentodeAssinaturas.Tests
 
             var mensagemRetorno = await responseDelete.Content.ReadAsStringAsync();
             mensagemRetorno.Should().Contain("sucesso");
-        }
-
-        private string GerarTokenParaTeste()
-        {
-            // Mesma chave do appsettings.Development.json (ambiente usado pelo WebApplicationFactory)
-            var chaveSecreta = "chave-somente-para-desenvolvimento-local-assina-mais";
-            var key = Encoding.ASCII.GetBytes(chaveSecreta);
-            var tokenHandler = new JwtSecurityTokenHandler();
-            var tokenDescriptor = new SecurityTokenDescriptor
-            {
-                Subject = new ClaimsIdentity(new[] {
-                    new Claim(ClaimTypes.Email, "admin@teste.com"),
-                    new Claim(ClaimTypes.Role, "Admin")
-                }),
-                Expires = DateTime.UtcNow.AddHours(1),
-                SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
-            };
-            return tokenHandler.WriteToken(tokenHandler.CreateToken(tokenDescriptor));
         }
     }
 

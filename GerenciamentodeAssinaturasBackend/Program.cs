@@ -9,6 +9,7 @@ using GerenciamentodeAssinaturasBackend.BackgroundServices;
 using GerenciamentodeAssinaturasBackend.Domain.Interfaces;
 using GerenciamentodeAssinaturasBackend.Infrastructure.Data;
 using GerenciamentodeAssinaturasBackend.Infrastructure.Repositories;
+using GerenciamentodeAssinaturasBackend.Infrastructure.Seguranca;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -30,6 +31,7 @@ builder.Services.AddCors(options =>
 });
 
 builder.Services.AddControllers();
+builder.Services.AddSegurancaDaApi(builder.Configuration);
 builder.Services.AddProblemDetails();
 builder.Services.AddEndpointsApiExplorer();
 
@@ -106,14 +108,17 @@ builder.Services.AddAuthentication(x =>
 })
 .AddJwtBearer(x =>
 {
-    x.RequireHttpsMetadata = false;
-    x.SaveToken = true;
     x.TokenValidationParameters = new TokenValidationParameters
     {
         ValidateIssuerSigningKey = true,
         IssuerSigningKey = new SymmetricSecurityKey(key),
-        ValidateIssuer = false,
-        ValidateAudience = false
+        // Só aceita tokens emitidos por esta API e destinados ao frontend do Assina+
+        ValidateIssuer = true,
+        ValidIssuer = builder.Configuration["Jwt:Issuer"] ?? TokenService.EmissorPadrao,
+        ValidateAudience = true,
+        ValidAudience = builder.Configuration["Jwt:Audience"] ?? TokenService.PublicoPadrao,
+        ValidateLifetime = true,
+        ClockSkew = TimeSpan.FromMinutes(1)
     };
 });
 
@@ -121,6 +126,7 @@ var app = builder.Build();
 
 // Erros não tratados viram uma resposta 500 genérica, sem expor detalhes internos ao cliente
 app.UseExceptionHandler();
+app.UseSegurancaDaApi();
 
 // Swagger fica disponível também em produção: é a vitrine da API para quem avalia o projeto
 app.UseSwagger();
@@ -128,7 +134,8 @@ app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "Assina+ API
 
 app.UseCors("Frontend");
 
-app.UseAuthentication(); 
+app.UseAuthentication();
+app.UseRateLimiter();      // depois da autenticação, para limitar por usuário logado
 app.UseAuthorization();  
 
 app.MapControllers();

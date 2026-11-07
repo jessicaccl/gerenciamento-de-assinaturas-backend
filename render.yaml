@@ -11,6 +11,9 @@ services:
         value: Production
       - key: PORT
         value: "8080"
+      # O Render fica na frente da API como proxy: o IP real do visitante chega em X-Forwarded-For
+      - key: Seguranca__AtrasDeProxy
+        value: "true"
       - key: Jwt__Key
         generateValue: true
       # URL do banco (ex.: Neon). Aceita o formato postgresql://usuario:senha@host/banco

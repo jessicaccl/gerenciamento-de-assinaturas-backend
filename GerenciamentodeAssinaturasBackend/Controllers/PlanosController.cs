@@ -6,6 +6,8 @@ using GerenciamentodeAssinaturasBackend.Domain.Entities;
 using GerenciamentodeAssinaturasBackend.Domain.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
+using GerenciamentodeAssinaturasBackend.Infrastructure.Seguranca;
 using System.Security.Claims;
 
 namespace GerenciamentodeAssinaturasBackend.Controllers
@@ -97,6 +99,7 @@ namespace GerenciamentodeAssinaturasBackend.Controllers
 
         [HttpDelete("{id}")]
         [Authorize(Roles = Cargos.Admin)]
+        [EnableRateLimiting(ConfiguracaoDeSeguranca.PoliticaDeSenha)]   // pede a senha do Admin
         public async Task<IActionResult> Delete(int id, [FromBody] ConfirmacaoDeleteDto confirmacao)
         {
             var emailLogado = ObterEmailUsuario();

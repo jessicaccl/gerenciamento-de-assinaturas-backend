@@ -16,6 +16,9 @@ namespace GerenciamentodeAssinaturasBackend.Application.Services.Auth
             _configuration = configuration;
         }
 
+        public const string EmissorPadrao = "AssinaMais.Api";
+        public const string PublicoPadrao = "AssinaMais.Web";
+
         public string GenerateToken(Usuario usuario)
         {
             var secretKey = _configuration["Jwt:Key"]
@@ -32,7 +35,10 @@ namespace GerenciamentodeAssinaturasBackend.Application.Services.Auth
                     
                     new Claim(ClaimTypes.Role, usuario.Cargo ?? "Colaborador")
                 }),
-                Expires = DateTime.UtcNow.AddHours(24),
+                Issuer = _configuration["Jwt:Issuer"] ?? EmissorPadrao,
+                Audience = _configuration["Jwt:Audience"] ?? PublicoPadrao,
+                // Sessão de um dia de trabalho: um token vazado deixa de valer no mesmo dia
+                Expires = DateTime.UtcNow.AddHours(8),
                 SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
             };
 

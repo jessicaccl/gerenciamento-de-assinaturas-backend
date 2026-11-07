@@ -13,6 +13,7 @@ public class RegisterDto
     public string? Email { get; set; }
 
     [Required(ErrorMessage = "A senha é obrigatória")]
-    [MinLength(6, ErrorMessage = "A senha deve ter pelo menos 6 caracteres")]
+    [MinLength(8, ErrorMessage = "A senha deve ter pelo menos 8 caracteres")]
+    [RegularExpression(@"^(?=.*[A-Za-z])(?=.*\d).+$", ErrorMessage = "A senha deve ter letras e números")]
     public string? Senha { get; set; }
 }
