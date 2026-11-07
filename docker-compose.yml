@@ -11,6 +11,8 @@ services:
       POSTGRES_DB: assina_mais
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
+      TZ: America/Sao_Paulo   # datas de vencimento e pagamento no horário do Brasil
+      PGTZ: America/Sao_Paulo
     ports:
       - "${DB_PORT:-5432}:5432"   # se já tiver um Postgres local na 5432, use: DB_PORT=5434 docker compose up -d
     volumes:
@@ -43,6 +45,7 @@ services:
         condition: service_healthy
     environment:
       ASPNETCORE_ENVIRONMENT: Development
+      TZ: America/Sao_Paulo
       ConnectionStrings__DefaultConnection: "Host=db;Port=5432;Database=assina_mais;Username=postgres;Password=postgres;"
       RabbitMQ__Host: rabbitmq
       # Para enviar e-mails de verdade, preencha com uma senha de app do Gmail (opcional)

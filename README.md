@@ -50,7 +50,7 @@ flowchart LR
 Organização em camadas, inspirada em Clean Architecture:
 
 ```
-GerenciamentodeAssinaturasBackend/
+AssinaMais.Api/
 ├── Controllers/          # Endpoints HTTP
 ├── Application/          # DTOs, interfaces e serviços (auth, e-mail, mensageria)
 ├── Domain/               # Entidades e contratos de repositório
@@ -99,7 +99,10 @@ db/init.sql               # Estrutura do banco + dados de demonstração
 | POST | `/api/cobrancas/{id}/lembrete` | Autenticado | Envia lembrete de pagamento por e-mail ao cliente |
 | POST | `/api/cobrancas/lembretes/vencidas` | Autenticado | Envia lembrete para todas as cobranças vencidas |
 | GET | `/api/cobrancas/exportar` | Autenticado | Exporta as cobranças em CSV (mesmos filtros da listagem) |
+| GET | `/api/cobrancas/resumo` | Autenticado | Totais a receber, vencido e recebido em 30 dias |
 | GET | `/api/provisoes?mesesFuturos=6` | Autenticado | Painel financeiro: MRR, a receber, vencido, aging, provisão e previsão mensal |
+
+As listagens de cobranças, clientes e assinaturas aceitam `?pagina=1&tamanhoPagina=20` (máximo 100). A paginação é feita no banco (`LIMIT`/`OFFSET`), e o total de registros volta no cabeçalho `X-Total-Count`. Sem `pagina`, a rota devolve a lista completa, como nas listas de seleção.
 
 ## Clientes
 
@@ -197,7 +200,7 @@ Os consumidores tentam reconectar automaticamente enquanto o broker não está d
 
 ## Testes
 
-São testes de integração (requisições HTTP reais contra a API) e testes unitários de regras de negócio. São 95 testes, que cobrem CRUD de planos, clientes (validação de CPF/CNPJ, máscara, situação, MRR por cliente), ciclo de vida da assinatura, regras de cobrança (descontos por ciclo, períodos, vencimento no fim do mês), geração e pagamento de cobranças, MRR, projeção de recebimentos, aging e provisão para inadimplência, regras de lembrete, envio de lembretes, exportação CSV e regras de segurança (401/403, limite de tentativas, cabeçalhos, token de outro emissor, senha fraca e ausência de dados sensíveis nas respostas).
+São testes de integração (requisições HTTP reais contra a API) e testes unitários de regras de negócio. São 103 testes, que cobrem CRUD de planos, validação de entrada de planos, paginação, clientes (validação de CPF/CNPJ, máscara, situação, MRR por cliente), ciclo de vida da assinatura, regras de cobrança (descontos por ciclo, períodos, vencimento no fim do mês), geração e pagamento de cobranças, MRR, projeção de recebimentos, aging e provisão para inadimplência, regras de lembrete, envio de lembretes, exportação CSV e regras de segurança (401/403, limite de tentativas, cabeçalhos, token de outro emissor, senha fraca e ausência de dados sensíveis nas respostas).
 
 Com o `docker compose` rodando:
 
@@ -229,14 +232,14 @@ A chave JWT é gerada pelo próprio Render. No plano gratuito, a API "dorme" ap�
 1. Instale o .NET 8 SDK, o PostgreSQL e o RabbitMQ.
 2. Crie o banco `assina_mais` e execute `db/init.sql`.
 3. Ajuste `appsettings.Development.json` se o seu usuário ou senha do Postgres forem diferentes.
-4. Rode `dotnet run --project GerenciamentodeAssinaturasBackend`.
+4. Rode `dotnet run --project AssinaMais.Api`.
 
 ### Envio de e-mail (opcional)
 
 Sem configuração de SMTP, o e-mail de boas-vindas aparece apenas no log. Para enviar de verdade, use [User Secrets](https://learn.microsoft.com/aspnet/core/security/app-secrets) e nunca coloque a senha no código:
 
 ```bash
-cd GerenciamentodeAssinaturasBackend
+cd AssinaMais.Api
 dotnet user-secrets set "Email:Remetente" "seu-email@gmail.com"
 dotnet user-secrets set "Email:Senha" "sua-senha-de-app"
 ```

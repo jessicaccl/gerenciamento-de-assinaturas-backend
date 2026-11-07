@@ -41,7 +41,7 @@ jobs:
           PGPASSWORD: postgres
 
       - name: Build
-        run: dotnet build GerenciamentodeAssinaturasBackend.slnx -c Release
+        run: dotnet build AssinaMais.slnx -c Release
 
       - name: Testes
-        run: dotnet test GerenciamentodeAssinaturasBackend.slnx -c Release --no-build
+        run: dotnet test AssinaMais.slnx -c Release --no-build

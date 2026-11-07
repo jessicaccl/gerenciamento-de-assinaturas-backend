@@ -11,6 +11,9 @@ services:
         value: Production
       - key: PORT
         value: "8080"
+      # "Hoje" (vencimentos, atrasos, lembretes) no horário do Brasil
+      - key: TZ
+        value: America/Sao_Paulo
       # O Render fica na frente da API como proxy: o IP real do visitante chega em X-Forwarded-For
       - key: Seguranca__AtrasDeProxy
         value: "true"

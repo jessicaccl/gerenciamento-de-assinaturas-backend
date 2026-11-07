@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="AssinaMais.Tests/AssinaMais.Tests.csproj" />
+  <Project Path="AssinaMais.Api/AssinaMais.Api.csproj" />
+</Solution>
