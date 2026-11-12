@@ -6,6 +6,7 @@ COPY AssinaMais.Api/AssinaMais.Api.csproj AssinaMais.Api/
 RUN dotnet restore AssinaMais.Api/AssinaMais.Api.csproj
 
 COPY AssinaMais.Api/ AssinaMais.Api/
+COPY db/ db/
 RUN dotnet publish AssinaMais.Api/AssinaMais.Api.csproj -c Release -o /app --no-restore
 
 # --- Runtime ---

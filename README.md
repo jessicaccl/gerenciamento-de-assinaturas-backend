@@ -57,7 +57,8 @@ AssinaMais.Api/
 ├── Infrastructure/       # Acesso a dados com Dapper
 ├── BackgroundServices/   # Consumidores do RabbitMQ
 └── Templates/            # Template HTML do e-mail
-db/init.sql               # Estrutura do banco + dados de demonstração
+db/01-estrutura.sql       # Estrutura do banco
+db/02-dados-demo.sql      # Dados de demonstração (também usados no reset diário)
 ```
 
 ## Stack
@@ -216,7 +217,7 @@ O projeto está preparado para rodar em planos gratuitos:
 
 | Parte | Serviço | Observação |
 |---|---|---|
-| Banco | [Neon](https://neon.tech) (PostgreSQL) | Execute `db/init.sql` no SQL Editor do Neon |
+| Banco | [Neon](https://neon.tech) (PostgreSQL) | Execute `db/01-estrutura.sql` e depois `db/02-dados-demo.sql` no SQL Editor do Neon |
 | API | [Render](https://render.com) | Use o `render.yaml` (New > Blueprint) |
 | Mensageria (opcional) | [CloudAMQP](https://www.cloudamqp.com) | Sem ela, os eventos vão só para o log (`RabbitMQ__Habilitado=false`) |
 | Frontend | [Vercel](https://vercel.com) | Veja o README do frontend |
@@ -225,12 +226,14 @@ No Render, informe:
 - `ConnectionStrings__DefaultConnection`: a URL do Neon, no formato `postgresql://...`. A API converte automaticamente.
 - `Cors__Origens__0` e `App__UrlFrontend`: a URL do frontend na Vercel.
 
+**Reset diário da demo:** no deploy público, a API recria os dados de demonstração uma vez por dia, a partir das 4h (`Demo__ResetDiario`). Assim, se um visitante excluir planos ou cancelar cobranças, o próximo encontra tudo arrumado, e as datas de vencimento continuam atuais. Um cadeado no PostgreSQL e a tabela `ResetsDemo` garantem um único reset por dia, mesmo com a API reiniciando ou rodando em mais de uma instância.
+
 A chave JWT é gerada pelo próprio Render. No plano gratuito, a API "dorme" após 15 minutos sem uso, e a primeira requisição pode levar até 1 minuto. As contas de demonstração são protegidas contra edição e exclusão (`App:ContasProtegidas`).
 
 ## Rodando sem Docker
 
 1. Instale o .NET 8 SDK, o PostgreSQL e o RabbitMQ.
-2. Crie o banco `assina_mais` e execute `db/init.sql`.
+2. Crie o banco `assina_mais` e execute `db/01-estrutura.sql` e `db/02-dados-demo.sql`, nessa ordem.
 3. Ajuste `appsettings.Development.json` se o seu usuário ou senha do Postgres forem diferentes.
 4. Rode `dotnet run --project AssinaMais.Api`.
 

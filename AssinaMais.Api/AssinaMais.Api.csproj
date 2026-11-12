@@ -22,6 +22,10 @@
 	  <None Update="Templates\*.html">
 	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 	  </None>
+	  <!-- Mesmo script do docker-compose: o reset diário da demo recria os dados a partir dele -->
+	  <None Include="..\db\02-dados-demo.sql" Link="Demo\dados-demo.sql">
+	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	  </None>
 	</ItemGroup>
 
 </Project>

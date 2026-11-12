@@ -36,7 +36,9 @@ jobs:
             10.0.x
 
       - name: Criar estrutura do banco
-        run: psql -h localhost -U postgres -d assina_mais -f db/init.sql
+        run: |
+          psql -h localhost -U postgres -d assina_mais -f db/01-estrutura.sql
+          psql -h localhost -U postgres -d assina_mais -f db/02-dados-demo.sql
         env:
           PGPASSWORD: postgres
 

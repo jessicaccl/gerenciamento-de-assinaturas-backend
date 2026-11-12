@@ -14,6 +14,9 @@ services:
       # "Hoje" (vencimentos, atrasos, lembretes) no horário do Brasil
       - key: TZ
         value: America/Sao_Paulo
+      # Recria os dados de demonstração uma vez por dia (a partir das 4h), para a demo pública continuar arrumada
+      - key: Demo__ResetDiario
+        value: "true"
       # O Render fica na frente da API como proxy: o IP real do visitante chega em X-Forwarded-For
       - key: Seguranca__AtrasDeProxy
         value: "true"

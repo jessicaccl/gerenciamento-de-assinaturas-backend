@@ -17,7 +17,8 @@ services:
       - "${DB_PORT:-5432}:5432"   # se já tiver um Postgres local na 5432, use: DB_PORT=5434 docker compose up -d
     volumes:
       - db-data:/var/lib/postgresql/data
-      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - ./db/01-estrutura.sql:/docker-entrypoint-initdb.d/01-estrutura.sql:ro
+      - ./db/02-dados-demo.sql:/docker-entrypoint-initdb.d/02-dados-demo.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d assina_mais"]
       interval: 5s
