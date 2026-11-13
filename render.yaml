@@ -5,6 +5,7 @@ services:
     name: assina-mais-api
     runtime: docker
     plan: free
+    region: ohio   # mesma região do banco no Neon (AWS US East 2), para menor latência
     healthCheckPath: /swagger/index.html
     envVars:
       - key: ASPNETCORE_ENVIRONMENT
